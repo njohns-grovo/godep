@@ -97,7 +97,8 @@ func save(pkgs []string) error {
 	if err != nil {
 		return err
 	}
-	ver, err := goVersion()
+
+	cv, err := goVersion()
 	if err != nil {
 		return err
 	}
@@ -107,11 +108,14 @@ func save(pkgs []string) error {
 		if !os.IsNotExist(err) {
 			return err
 		}
+		gold.GoVersion = cv
 	}
+
+	printVersionWarnings(gold.GoVersion)
 
 	gnew := &Godeps{
 		ImportPath: dot.ImportPath,
-		GoVersion:  ver,
+		GoVersion:  gold.GoVersion,
 	}
 
 	switch len(pkgs) {
@@ -183,6 +187,34 @@ func save(pkgs []string) error {
 		}
 	}
 	return rewrite(a, dot.ImportPath, rewritePaths)
+}
+
+func printVersionWarnings(ov string) {
+	var warning bool
+	cv, err := goVersion()
+	if err != nil {
+		return
+	}
+	tov, err := trimGoVersion(ov)
+	if err != nil {
+		return
+	}
+	tcv, err := trimGoVersion(cv)
+	if err != nil {
+		return
+	}
+
+	if tov != ov {
+		log.Printf("WARNING: Recorded go version (%s) with minor version string found.\n", ov)
+		warning = true
+	}
+	if tcv != tov {
+		log.Printf("WARNING: Recorded major go version (%s) and in-use major go version (%s) differ.\n", tov, tcv)
+		warning = true
+	}
+	if warning {
+		log.Println("To record current major go version run `godep update -goversion`.")
+	}
 }
 
 type revError struct {
